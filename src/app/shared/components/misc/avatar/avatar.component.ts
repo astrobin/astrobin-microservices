@@ -18,6 +18,9 @@ import { selectContentType } from "@app/store/selectors/app/content-type.selecto
 import { ContentTypeInterface } from "@core/interfaces/content-type.interface";
 import { selectToggleProperty } from "@app/store/selectors/app/toggle-property.selectors";
 import { fadeInOut } from "@shared/animations";
+import { CommonApiService } from "@core/services/api/classic/common/common-api.service";
+import { NgbOffcanvas } from "@ng-bootstrap/ng-bootstrap";
+import { AvatarEditorComponent } from "@shared/components/misc/avatar-editor/avatar-editor.component";
 
 @Component({
   selector: "astrobin-avatar",
@@ -42,9 +45,13 @@ export class AvatarComponent extends BaseComponentDirective implements OnChanges
   @Input()
   showFollowsYouBadge = false;
 
+  @Input()
+  showEditButton = false;
+
   protected avatarUrl: string = "/assets/images/default-avatar.jpeg?v=2";
   protected url: string;
   protected followsYou = false;
+  protected isCurrentUser = false;
 
   constructor(
     public readonly store$: Store<MainState>,
@@ -53,7 +60,8 @@ export class AvatarComponent extends BaseComponentDirective implements OnChanges
     public readonly router: Router,
     public readonly windowRefService: WindowRefService,
     public readonly userService: UserService,
-    public readonly changeDetectorRef: ChangeDetectorRef
+    public readonly changeDetectorRef: ChangeDetectorRef,
+    private readonly offcanvasService: NgbOffcanvas
   ) {
     super(store$);
   }
@@ -71,6 +79,7 @@ export class AvatarComponent extends BaseComponentDirective implements OnChanges
           this._setAvatar();
           this._setUrl();
           this._setFollowsYou();
+          this._checkIsCurrentUser();
           this.changeDetectorRef.markForCheck();
         });
 
@@ -79,6 +88,7 @@ export class AvatarComponent extends BaseComponentDirective implements OnChanges
         this._setAvatar();
         this._setUrl();
         this._setFollowsYou();
+        this._checkIsCurrentUser();
       }
     }
   }
@@ -89,6 +99,29 @@ export class AvatarComponent extends BaseComponentDirective implements OnChanges
         this.user.username,
         !currentUserProfile || currentUserProfile.enableNewGalleryExperience
       );
+    });
+  }
+  
+  protected openAvatarEditor(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Open the offcanvas with the AvatarEditorComponent
+    const offcanvasRef = this.offcanvasService.open(AvatarEditorComponent, {
+      position: 'end',
+      panelClass: 'avatar-editor-offcanvas',
+      backdropClass: 'avatar-editor-backdrop',
+      backdrop: 'static', // Prevent closing by clicking outside
+      beforeDismiss: () => offcanvasRef.componentInstance.beforeDismiss()
+    });
+    
+    // Pass the user to the component
+    offcanvasRef.componentInstance.user = this.user;
+    
+    // When the avatar is updated, update this component as well
+    offcanvasRef.componentInstance.avatarUpdated.subscribe((newAvatarUrl: string) => {
+      this.avatarUrl = newAvatarUrl;
+      this.changeDetectorRef.markForCheck();
     });
   }
 
@@ -155,6 +188,18 @@ export class AvatarComponent extends BaseComponentDirective implements OnChanges
         appLabel: "auth",
         model: "user"
       }));
+    });
+  }
+  
+  private _checkIsCurrentUser(): void {
+    this.currentUser$.pipe(take(1)).subscribe(currentUser => {
+      if (currentUser && this.user) {
+        this.isCurrentUser = currentUser.id === this.user.id;
+        this.changeDetectorRef.markForCheck();
+      } else if (currentUser && this.userId) {
+        this.isCurrentUser = currentUser.id === this.userId;
+        this.changeDetectorRef.markForCheck();
+      }
     });
   }
 }

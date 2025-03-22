@@ -40,11 +40,6 @@ import { isPlatformBrowser } from "@angular/common";
               [showPremiumBadge]="true"
               [showFollowsYouBadge]="true"
             ></astrobin-avatar>
-            <div class="edit-avatar" *ngIf="currentUserWrapper.user?.id === user.id">
-              <a [href]="classicRoutesService.SETTINGS_AVATAR">
-                <fa-icon icon="pencil"></fa-icon>
-              </a>
-            </div>
           </div>
 
           <div class="d-flex flex-column gap-3 gap-md-2">
